@@ -9,14 +9,15 @@ package eu.mcone.game.setup.plugin.cmd;
 import com.google.common.base.Joiner;
 import eu.mcone.coresystem.api.bukkit.CoreSystem;
 import eu.mcone.coresystem.api.bukkit.command.CorePlayerCommand;
+import eu.mcone.coresystem.api.bukkit.npc.CoreLocation;
 import eu.mcone.coresystem.api.bukkit.player.CorePlayer;
-import eu.mcone.coresystem.api.bukkit.world.CoreLocation;
 import eu.mcone.coresystem.api.core.gamemode.Gamemode;
 import eu.mcone.game.setup.api.locations.DatabaseLocation;
 import eu.mcone.game.setup.plugin.GameSetup;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -93,17 +94,17 @@ public class SetupCMD extends CorePlayerCommand {
                 }
             } else if (args[0].equalsIgnoreCase("check")) {
                 String locationKey = args[1];
-                CoreLocation coreLocation = corePlayer.getWorld().getLocation(locationKey);
-                if (coreLocation != null) {
+                Location location = corePlayer.getWorld().getLocation(locationKey);
+                if (location != null) {
                     player.spigot().sendMessage(
                             new ComponentBuilder("§aDie Location mit dem Key `" + locationKey + "` existiert,")
                                     .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                                             new ComponentBuilder(
-                                                    "§8X: §7§o" + coreLocation.getX() +
-                                                            " §8Y: §7§o" + coreLocation.getY() +
-                                                            " §8Z: §7§o" + coreLocation.getZ() +
-                                                            " §8Yaw: §7§o" + coreLocation.getYaw() +
-                                                            " §8Pitch: §7§o" + coreLocation.getPitch()
+                                                    "§8X: §7§o" + location.getX() +
+                                                            " §8Y: §7§o" + location.getY() +
+                                                            " §8Z: §7§o" + location.getZ() +
+                                                            " §8Yaw: §7§o" + location.getYaw() +
+                                                            " §8Pitch: §7§o" + location.getPitch()
                                             ).create())).create());
                 } else {
                     GameSetup.getInstance().getMessager().send(player, "§cDie Location mit dem Key `§7" + locationKey + "§c` konnte nicht gefunden werden!");
@@ -196,17 +197,17 @@ public class SetupCMD extends CorePlayerCommand {
     }
 
     private void sendHover(Player player, String key) {
-        CoreLocation coreLocation = CoreSystem.getInstance().getWorldManager().getWorld(player.getWorld()).getLocation(key);
+        Location location = CoreSystem.getInstance().getWorldManager().getWorld(player.getWorld()).getLocation(key);
         BaseComponent[] baseComponents;
 
-        if (coreLocation != null) {
+        if (location != null) {
             baseComponents = new ComponentBuilder("§8➥ §f" + key + " §8│ §7Gesetzt: §aJA").event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                     new ComponentBuilder(
-                            "§8X: §7§o" + coreLocation.getX() +
-                                    " §8Y: §7§o" + coreLocation.getY() +
-                                    " §8Z: §7§o" + coreLocation.getZ() +
-                                    " §8Yaw: §7§o" + coreLocation.getYaw() +
-                                    " §8Pitch: §7§o" + coreLocation.getPitch()
+                            "§8X: §7§o" + location.getX() +
+                                    " §8Y: §7§o" + location.getY() +
+                                    " §8Z: §7§o" + location.getZ() +
+                                    " §8Yaw: §7§o" + location.getYaw() +
+                                    " §8Pitch: §7§o" + location.getPitch()
                     ).create())).create();
         } else {
             baseComponents = new ComponentBuilder("§8➥ §f" + key + " §8│ §7Gesetzt: §cNEIN").event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,

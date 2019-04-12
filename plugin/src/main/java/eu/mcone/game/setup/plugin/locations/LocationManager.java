@@ -62,30 +62,6 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-   /* public void test(Gamemode gamemode) {
-        DatabaseLocation databaseLocation = collection.find(eq("gamemode", gamemode.toString())).first();
-
-        DatabaseLocation databaseLocation = databaseLocationCollection.find(eq("gamemode", gamemode.toString())).first();
-
-        Map<String, DatabaseLocation.ConfigurationAttributes> test = new HashMap<String, DatabaseLocation.ConfigurationAttributes>() {{
-            put("Hallo10", DatabaseLocation.ConfigurationAttributes.RIGHT_CLICK);
-            put("Hallo11", DatabaseLocation.ConfigurationAttributes.RIGHT_CLICK);
-            put("Hallo12", DatabaseLocation.ConfigurationAttributes.RIGHT_CLICK);
-        }};
-
-        if (databaseLocation != null) {
-            databaseLocation.getByCommand().forEach((k, v) -> System.out.println("Database: Key: " + k + " Value: " + v));
-            test.forEach((k, v) -> System.out.println("Test: Key: " + k + " Value: " + v));
-            test.forEach((k, v) -> databaseLocation.getByCommand().put(k, v));
-
-            databaseLocation.getByCommand().forEach((k, v) -> System.out.println("Database: Key: " + k + " Value: " + v));
-            databaseLocationCollection.replaceOne(eq("gamemode", gamemode.toString()), databaseLocation, ReplaceOptions.createReplaceOptions(new UpdateOptions().upsert(true)));
-        } else {
-            System.out.println("Object is null!");
-        }
-    }*/
-
-
     public void addLocationsToDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final Map<String, DatabaseLocation.ConfigurationAttributes> locationKeys) {
         locationKeys.forEach((k, v) -> this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).put(k, v));
         this.locationKeys.get(gamemode.toString()).setLastUpdate(System.currentTimeMillis() / 1000);
