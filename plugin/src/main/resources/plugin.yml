@@ -1,0 +1,5 @@
+name: MCONE-GameSetup
+version: ${project.version}
+authors: [Domink Lippl]
+depend: [MCONE-BukkitCoreSystem]
+main: eu.mcone.game.setup.plugin.GameSetup
