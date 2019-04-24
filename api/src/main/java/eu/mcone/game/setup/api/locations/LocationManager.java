@@ -7,6 +7,7 @@
 package eu.mcone.game.setup.api.locations;
 
 import eu.mcone.coresystem.api.core.gamemode.Gamemode;
+import org.bukkit.entity.Player;
 
 import java.util.Map;
 
@@ -18,24 +19,11 @@ public interface LocationManager {
 
     void addObjectToDB(final Gamemode gamemode, final DatabaseLocation databaseLocation);
 
-    void addLocationsToDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final Map<String, DatabaseLocation.ConfigurationAttributes> locationKeys);
-
-    void addSingleLocatioKeyToDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final DatabaseLocation.ConfigurationAttributes configurationAttributes, final String locationKey);
-
-    void updateLocationListInDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final Map<String, DatabaseLocation.ConfigurationAttributes> locationKeys);
-
-    void updateSingleLocatioKeyInDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final String oldLocationKey, final String newLocationKey, final DatabaseLocation.ConfigurationAttributes newConfigurationAttributes);
-
-    void checkLocations(final DatabaseLocation.ConfigurationType configurationType);
+    void checkLocations(final String world, final Gamemode gamemode, final Player player);
 
     void checkLocations(final String world, final Gamemode gamemode);
-
-    void checkLocations(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType);
-
-    void checkLocations(final String worldName, final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType);
 
     void checkLocations(final String world);
 
     void checkLocations(final Gamemode gamemode);
-
 }

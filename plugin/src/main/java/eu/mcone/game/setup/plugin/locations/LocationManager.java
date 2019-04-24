@@ -13,8 +13,10 @@ import eu.mcone.coresystem.api.bukkit.CoreSystem;
 import eu.mcone.coresystem.api.bukkit.world.CoreWorld;
 import eu.mcone.coresystem.api.core.gamemode.Gamemode;
 import eu.mcone.game.setup.api.locations.DatabaseLocation;
+import eu.mcone.game.setup.plugin.GameSetup;
 import lombok.Getter;
 import lombok.extern.java.Log;
+import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,13 +36,13 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
 
     public LocationManager() {
         locationKeys = new HashMap<>();
+
         databaseLocationCollection = CoreSystem.getInstance().getMongoDB().getCollection("game_setup", DatabaseLocation.class);
     }
 
     public void storeLocationKeysFromDatabase() {
         for (DatabaseLocation databaseLocation : databaseLocationCollection.find(DatabaseLocation.class)) {
             if (databaseLocation != null) {
-                System.out.println(databaseLocation.getGamemode() != null);
                 locationKeys.put(databaseLocation.getGamemode().toString(), databaseLocation);
             } else {
                 break;
@@ -50,6 +52,7 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
 
     public void addObjectToDB(final Gamemode gamemode, final DatabaseLocation databaseLocation) {
         databaseLocation.setGamemode(gamemode);
+
         if (!(databaseLocationCollection.replaceOne(
                 eq("gamemode", gamemode.toString()),
                 databaseLocation,
@@ -62,8 +65,8 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void addLocationsToDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final Map<String, DatabaseLocation.ConfigurationAttributes> locationKeys) {
-        locationKeys.forEach((k, v) -> this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).put(k, v));
+    public void addLocationsToDatabase(final Gamemode gamemode, final Map<String, Integer> locationKeys) {
+        locationKeys.forEach((k, v) -> this.locationKeys.get(gamemode.toString()).getLocations().put(k, v));
         this.locationKeys.get(gamemode.toString()).setLastUpdate(System.currentTimeMillis() / 1000);
 
         if (!(databaseLocationCollection.replaceOne(
@@ -74,8 +77,8 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void addSingleLocatioKeyToDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final DatabaseLocation.ConfigurationAttributes configurationAttributes, final String locationKey) {
-        this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).put(locationKey, configurationAttributes);
+    public void addSingleLocatioKeyToDatabase(final Gamemode gamemode, final String locationKey, final int setType) {
+        this.locationKeys.get(gamemode.toString()).getLocations().put(locationKey, setType);
         this.locationKeys.get(gamemode.toString()).setLastUpdate(System.currentTimeMillis() / 1000);
 
         if (!(databaseLocationCollection.replaceOne(
@@ -86,9 +89,9 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void updateLocationListInDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final Map<String, DatabaseLocation.ConfigurationAttributes> locationKeys) {
-        this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).clear();
-        locationKeys.forEach((k, v) -> this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).put(k, v));
+    public void updateLocationListInDatabase(final Gamemode gamemode, final Map<String, Integer> locationKeys) {
+        this.locationKeys.get(gamemode.toString()).getLocations().clear();
+        locationKeys.forEach((k, v) -> this.locationKeys.get(gamemode.toString()).getLocations().put(k, v));
         this.locationKeys.get(gamemode.toString()).setLastUpdate(System.currentTimeMillis() / 1000);
 
         if (!(databaseLocationCollection.replaceOne(
@@ -99,9 +102,9 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void updateSingleLocatioKeyInDatabase(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType, final String oldLocationKey, final String newLocationKey, final DatabaseLocation.ConfigurationAttributes newConfigurationAttributes) {
-        this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).remove(oldLocationKey);
-        this.locationKeys.get(gamemode.toString()).getMapByConfigurationType(configurationType).put(newLocationKey, newConfigurationAttributes);
+    public void updateSingleLocatioKeyInDatabase(final Gamemode gamemode, final String oldLocationKey, final String newLocationKey, final int newSetType) {
+        this.locationKeys.get(gamemode.toString()).getLocations().remove(oldLocationKey);
+        this.locationKeys.get(gamemode.toString()).getLocations().put(newLocationKey, newSetType);
         this.locationKeys.get(gamemode.toString()).setLastUpdate(System.currentTimeMillis() / 1000);
 
         if (!(databaseLocationCollection.replaceOne(
@@ -112,12 +115,14 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void checkLocations(final DatabaseLocation.ConfigurationType configurationType) {
+    public void checkLocations(final int setType) {
         for (CoreWorld coreWorld : CoreSystem.getInstance().getWorldManager().getWorlds()) {
             for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
-                for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getMapByConfigurationType(configurationType).entrySet()) {
-                    if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                        log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+                for (Map.Entry<String, Integer> location_entry : entry.getValue().getLocations().entrySet()) {
+                    if (location_entry.getValue() == setType) {
+                        if (coreWorld.getLocation(location_entry.getKey()) == null) {
+                            log.log(Level.WARNING, "The location `" + location_entry.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+                        }
                     }
                 }
             }
@@ -130,29 +135,11 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         if (coreWorld != null) {
             for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
                 if (entry.getKey().equalsIgnoreCase(gamemode.toString())) {
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByCommand().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+                    for (Map.Entry<String, Integer> locationEntry : entry.getValue().getLocations().entrySet()) {
+                        if (coreWorld.getLocation(locationEntry.getKey()) == null) {
+                            log.log(Level.WARNING, "The location `" + locationEntry.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
                         }
                     }
-
-                    log.info("By command entry finished");
-
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByClick().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                        }
-                    }
-
-                    log.info("By click entry finished");
-
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getBySneak().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                        }
-                    }
-
-                    log.info("By sneak entry finished");
                 }
             }
         } else {
@@ -160,27 +147,17 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         }
     }
 
-    public void checkLocations(final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType) {
-        for (CoreWorld coreWorld : CoreSystem.getInstance().getWorldManager().getWorlds()) {
-            loopEntry(coreWorld, gamemode, configurationType);
-        }
-    }
-
-    public void checkLocations(final String worldName, final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType) {
-        CoreWorld coreWorld = CoreSystem.getInstance().getWorldManager().getWorld(worldName);
-
-        if (coreWorld != null) {
-            loopEntry(coreWorld, gamemode, configurationType);
-        } else {
-            log.log(Level.SEVERE, "The world with the name `" + worldName + "` could not found!");
-        }
-    }
-
     public void checkLocations(final String world) {
         CoreWorld coreWorld = CoreSystem.getInstance().getWorldManager().getWorld(world);
 
         if (coreWorld != null) {
-            loopAllEntries(coreWorld);
+            for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
+                for (Map.Entry<String, Integer> locationEntry : entry.getValue().getLocations().entrySet()) {
+                    if (coreWorld.getLocation(locationEntry.getKey()) == null) {
+                        log.log(Level.WARNING, "The location `" + locationEntry.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+                    }
+                }
+            }
         } else {
             log.log(Level.SEVERE, "The world with the name `" + world + "` could not found!");
         }
@@ -190,76 +167,32 @@ public class LocationManager implements eu.mcone.game.setup.api.locations.Locati
         for (CoreWorld coreWorld : CoreSystem.getInstance().getWorldManager().getWorlds()) {
             for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
                 if (entry.getKey().equalsIgnoreCase(gamemode.toString())) {
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByCommand().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+                    for (Map.Entry<String, Integer> locationEntry : entry.getValue().getLocations().entrySet()) {
+                        if (coreWorld.getLocation(locationEntry.getKey()) == null) {
+                            log.log(Level.WARNING, "The location `" + locationEntry.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
                         }
                     }
-
-                    log.info("By command entry finished");
-
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByClick().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                        }
-                    }
-
-                    log.info("By click entry finished");
-
-                    for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getBySneak().entrySet()) {
-                        if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                            log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                        }
-                    }
-
-                    log.info("By sneak entry finished");
                 }
             }
         }
     }
 
-    private boolean loopAllEntries(final CoreWorld coreWorld) {
-        for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
-            for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByCommand().entrySet()) {
-                if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                    log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                    return false;
-                }
-            }
+    public void checkLocations(final String world, final Gamemode gamemode, final Player player) {
+        CoreWorld coreWorld = CoreSystem.getInstance().getWorldManager().getWorld(world);
 
-            log.info("By command entry finished");
-
-            for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getByClick().entrySet()) {
-                if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                    log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                    return false;
-                }
-            }
-
-            log.info("By click entry finished");
-
-            for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getBySneak().entrySet()) {
-                if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                    log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
-                    return false;
-                }
-            }
-
-            log.info("By sneak entry finished");
-        }
-
-        return false;
-    }
-
-    private void loopEntry(final CoreWorld coreWorld, final Gamemode gamemode, final DatabaseLocation.ConfigurationType configurationType) {
-        for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
-            if (entry.getKey().equalsIgnoreCase(gamemode.toString())) {
-                for (Map.Entry<String, DatabaseLocation.ConfigurationAttributes> entry_location : entry.getValue().getMapByConfigurationType(configurationType).entrySet()) {
-                    if (coreWorld.getLocation(entry_location.getKey()) == null) {
-                        log.log(Level.WARNING, "The location `" + entry_location.getKey() + "` in the world `" + coreWorld.getName() + "` could not found!, ConfigurationType: Command");
+        if (coreWorld != null) {
+            for (Map.Entry<String, DatabaseLocation> entry : locationKeys.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(gamemode.toString())) {
+                    for (Map.Entry<String, Integer> locationEntry : entry.getValue().getLocations().entrySet()) {
+                        if (coreWorld.getLocation(locationEntry.getKey()) == null) {
+                            player.sendMessage("§8➥ §f" + locationEntry.getKey() + " §8│ §7Gesetzt: §cNEIN");
+                        }
                     }
                 }
             }
+        } else {
+            GameSetup.getInstance().getMessager().send(player, "§cDie CoreWorld mit dem Namen `" + world + "` konnte nicht gefunden werden!");
         }
     }
+
 }
